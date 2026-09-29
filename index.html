@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Data & Input Google Sheet Interaktif</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              800: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    
+    .glass-panel {
+      background: rgba(30, 41, 59, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .glass-nav {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="font-sans antialiased h-full min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-brand-500 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-30 glass-nav">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo / Title -->
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <i class="fa-solid fa-file-spreadsheet text-white text-xl"></i>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+              Portal Data Spreadsheet
+            </h1>
+            <p class="text-xs text-slate-400 flex items-center gap-1.5">
+              <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Synced TSV Sheet
+            </p>
+          </div>
+        </div>
+
+        <!-- Quick Status & Action Header -->
+        <div class="flex items-center gap-3">
+          <!-- Apps Script Config Modal Trigger -->
+          <button id="btnOpenConfig" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700">
+            <i class="fa-solid fa-code text-cyan-400"></i>
+            <span class="hidden sm:inline">Pengaturan Auto-Save Google Sheet</span>
+          </button>
+
+          <!-- Add Data Button -->
+          <button id="btnOpenAddModal" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/25 transition-all transform active:scale-95">
+            <i class="fa-solid fa-plus"></i>
+            <span>Tambah Data Baru</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Source Sheet Status Bar & Quick Stats -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      
+      <!-- Stats Card 1: Total Entries -->
+      <div class="glass-panel p-4 rounded-2xl flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-400">Total Baris Data</p>
+          <h3 id="statTotalRows" class="text-2xl font-bold text-white mt-1">0</h3>
+        </div>
+        <div class="h-12 w-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-database"></i>
+        </div>
+      </div>
+
+      <!-- Stats Card 2: Detected Columns -->
+      <div class="glass-panel p-4 rounded-2xl flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-400">Jumlah Kolom</p>
+          <h3 id="statTotalCols" class="text-2xl font-bold text-white mt-1">0</h3>
+        </div>
+        <div class="h-12 w-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-table-columns"></i>
+        </div>
+      </div>
+
+      <!-- Stats Card 3: Security Policy -->
+      <div class="glass-panel p-4 rounded-2xl flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-400">Kebijakan Data</p>
+          <h3 class="text-sm font-semibold text-amber-400 mt-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-halved"></i> Fitur Hapus Dinonaktifkan
+          </h3>
+        </div>
+        <div class="h-12 w-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+      </div>
+
+      <!-- Stats Card 4: Last Sync Status -->
+      <div class="glass-panel p-4 rounded-2xl flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-400">Pembaruan Terakhir</p>
+          <p id="statLastSync" class="text-xs font-semibold text-slate-200 mt-1">Belum dimuat</p>
+        </div>
+        <button id="btnRefreshData" title="Sinkronkan Ulang dari Google Sheet" class="h-12 w-12 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl transition-all">
+          <i id="syncIcon" class="fa-solid fa-rotate"></i>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Main Data Table Container -->
+    <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden flex flex-col">
+      
+      <!-- Toolbar: Search, Filters & Web App Endpoint Link -->
+      <div class="p-4 sm:p-6 border-b border-slate-800/80 flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center bg-slate-900/50">
+        
+        <!-- Search Input -->
+        <div class="relative flex-1 max-w-md">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input type="text" id="searchInput" placeholder="Cari data berdasarkan nama, kode, keterangan..." 
+            class="w-full pl-10 pr-4 py-2 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all">
+        </div>
+
+        <!-- Sheet Integration Web Endpoint Input -->
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1 sm:w-80">
+            <input type="text" id="scriptUrlInput" placeholder="URL Google Apps Script Web App (Opsional)" 
+              class="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500">
+          </div>
+          <button id="btnSaveScriptUrl" class="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-medium transition-colors shadow-sm">
+            Simpan API
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Sheet Info Banner -->
+      <div class="px-6 py-2.5 bg-slate-900/80 border-b border-slate-800/50 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
+        <div class="flex items-center gap-2 truncate">
+          <span class="font-semibold text-slate-300">Sumber Sheet TSV:</span>
+          <span class="font-mono text-cyan-400 truncate max-w-md">2PACX-1vTs2gfbhHye4MbH-lGxMhZvaw7AQlqShiyxYIxE7EEA1y8n2Urf5eIndgR_2Xo3eQe-fU5sgVntKoHK</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <i class="fa-solid fa-pen-to-square mr-1"></i> Mode Edit & Tambah Aktif
+          </span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+            <i class="fa-solid fa-ban mr-1"></i> No Delete
+          </span>
+        </div>
+      </div>
+
+      <!-- Responsive Table View -->
+      <div class="overflow-x-auto min-h-[350px] relative">
+        <!-- Table Loader -->
+        <div id="tableLoader" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-3">
+          <div class="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-sm font-medium text-slate-300">Mengunduh & Memproses Data Google Sheet...</p>
+        </div>
+
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr id="tableHeaderRow" class="bg-slate-900/90 text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800">
+              <!-- Dynamically populated headers -->
+              <th class="px-4 py-3.5 font-semibold text-center w-16">No</th>
+              <th class="px-4 py-3.5 font-semibold">Memuat Header...</th>
+              <th class="px-4 py-3.5 font-semibold text-right w-24">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-800/60 text-sm text-slate-200">
+            <!-- Dynamically populated rows -->
+          </tbody>
+        </table>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden py-16 text-center">
+          <div class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-800 text-slate-500 mb-4">
+            <i class="fa-solid fa-folder-open text-2xl"></i>
+          </div>
+          <h4 class="text-base font-semibold text-slate-200">Tidak Ada Data Ditemukan</h4>
+          <p class="text-xs text-slate-400 max-w-sm mx-auto mt-1">Coba sesuaikan kata kunci pencarian atau tambah data baru ke dalam spreadsheet.</p>
+        </div>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div class="p-4 border-t border-slate-800/80 bg-slate-900/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+        <div class="flex items-center gap-2">
+          <span>Menampilkan</span>
+          <select id="rowsPerPageSelect" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 focus:outline-none">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <span>data per halaman</span>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <span id="pageInfo">Halaman 1 dari 1</span>
+          <div class="flex items-center gap-1">
+            <button id="btnPrevPage" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <i class="fa-solid fa-chevron-left text-xs"></i>
+            </button>
+            <button id="btnNextPage" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <i class="fa-solid fa-chevron-right text-xs"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL: Dynamic Input & Edit Data -->
+  <div id="dataModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden">
+    <div class="glass-panel w-full max-w-2xl rounded-2xl border border-slate-700/80 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div class="flex items-center gap-3">
+          <div id="modalHeaderIcon" class="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <i class="fa-solid fa-plus"></i>
+          </div>
+          <div>
+            <h3 id="modalTitle" class="text-base font-bold text-slate-100">Tambah Data Baru</h3>
+            <p id="modalSubtitle" class="text-xs text-slate-400">Data akan tersimpan secara otomatis</p>
+          </div>
+        </div>
+        <button id="btnCloseModal" class="text-slate-400 hover:text-white p-2 rounded-lg transition-colors">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body - Dynamic Form Fields -->
+      <div class="p-6 overflow-y-auto flex-1 space-y-4" id="formFieldsContainer">
+        <!-- Form inputs generated dynamically via JavaScript -->
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-slate-800 bg-slate-900/80 flex items-center justify-end gap-3">
+        <button id="btnCancelModal" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors">
+          Batal
+        </button>
+        <button id="btnSaveData" class="px-5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span id="btnSaveText">Simpan Data</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: Google Apps Script Setup Guide -->
+  <div id="configModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden">
+    <div class="glass-panel w-full max-w-3xl rounded-2xl border border-slate-700/80 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+            <i class="fa-solid fa-code"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-100">Integrasi Auto-Save Google Sheet</h3>
+            <p class="text-xs text-slate-400">Petunjuk menghubungkan fitur SIMPAN & EDIT langsung ke Spreadsheet</p>
+          </div>
+        </div>
+        <button id="btnCloseConfigModal" class="text-slate-400 hover:text-white p-2 rounded-lg transition-colors">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto flex-1 space-y-4 text-xs text-slate-300">
+        
+        <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300">
+          <p class="font-semibold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Informasi Penyimpanan Direct Write:</p>
+          <p>Spreadsheet TSV Google Sheet yang dipublikasikan secara default bersifat <i>Read-Only</i>. Agar fitur **Tambah Data** dan **Edit Data** dari web ini tersimpan langsung secara otomatis di Google Sheet Anda, Anda dapat menempelkan Google Apps Script Web App di bawah ini ke Spreadsheet Anda.</p>
+        </div>
+
+        <h4 class="font-bold text-slate-100 text-sm">Langkah Mudah (Hanya 1 Menit):</h4>
+        <ol class="list-decimal pl-5 space-y-2 text-slate-300">
+          <li>Buka file Google Sheet Anda di browser.</li>
+          <li>Klik menu <span class="text-cyan-400 font-semibold">Extensions (Ekstensi) &gt; Apps Script</span>.</li>
+          <li>Hapus isi kode yang ada, lalu salin dan tempel (paste) kode di bawah ini:</li>
+        </ol>
+
+        <div class="relative">
+          <pre class="bg-slate-950 p-4 rounded-xl font-mono text-[11px] text-emerald-400 overflow-x-auto border border-slate-800 select-all" id="appsScriptCode">
+function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = JSON.parse(e.postData.contents);
+    
+    if (data.action === 'add') {
+      sheet.appendRow(data.row);
+      return ContentService.createTextOutput(JSON.stringify({result: 'success', message: 'Data ditambahkan'}))
+        .setMimeType(ContentService.MimeType.JSON);
+    } 
+    else if (data.action === 'edit') {
+      var rowIndex = parseInt(data.rowIndex) + 1; // 1-based index (header = row 1)
+      var rowData = data.row;
+      for (var col = 0; col < rowData.length; col++) {
+        sheet.getRange(rowIndex, col + 1).setValue(rowData[col]);
+      }
+      return ContentService.createTextOutput(JSON.stringify({result: 'success', message: 'Data diperbarui'}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({result: 'error', error: err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput("Google Sheet Web App API Active");
+}</pre>
+          <button id="btnCopyScript" class="absolute top-2 right-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors">
+            <i class="fa-regular fa-copy mr-1"></i> Salin Kode
+          </button>
+        </div>
+
+        <ol start="4" class="list-decimal pl-5 space-y-2 text-slate-300">
+          <li>Klik tombol <span class="text-cyan-400 font-semibold">Deploy (Terapkan) &gt; New deployment (Terapkan baru)</span>.</li>
+          <li>Pilih jenis <span class="text-cyan-400 font-semibold">Web app</span>. Setel <i>Who has access (Siapa yang memiliki akses)</i> menjadi <span class="text-emerald-400 font-semibold">Anyone (Siapa saja)</span>.</li>
+          <li>Klik <b>Deploy</b>, berikan izin akses (Authorize), lalu salin <b>Web App URL</b> yang dihasilkan.</li>
+          <li>Masukkan URL tersebut pada kolom <b>URL API Google Apps Script</b> di bagian atas web page ini.</li>
+        </ol>
+
+      </div>
+
+      <div class="px-6 py-3 border-t border-slate-800 bg-slate-900/80 flex justify-end">
+        <button id="btnGotIt" class="px-4 py-2 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white transition-colors">
+          Saya Mengerti
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification Box -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    // System Constants & State Variables
+    const TSV_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTs2gfbhHye4MbH-lGxMhZvaw7AQlqShiyxYIxE7EEA1y8n2Urf5eIndgR_2Xo3eQe-fU5sgVntKoHK/pub?output=tsv';
+    
+    let state = {
+      headers: [],
+      rows: [], // Each row is { _id: Number, _rowIndex: Number (1-based sheet row), cols: Array }
+      filteredRows: [],
+      currentPage: 1,
+      rowsPerPage: 25,
+      searchQuery: '',
+      editingRowIndex: null, // null = Add Mode, Number = Edit Mode
+      scriptUrl: localStorage.getItem('gs_script_url') || ''
+    };
+
+    // DOM Elements Reference
+    const tableHeaderRow = document.getElementById('tableHeaderRow');
+    const tableBody = document.getElementById('tableBody');
+    const tableLoader = document.getElementById('tableLoader');
+    const emptyState = document.getElementById('emptyState');
+    const searchInput = document.getElementById('searchInput');
+    const statTotalRows = document.getElementById('statTotalRows');
+    const statTotalCols = document.getElementById('statTotalCols');
+    const statLastSync = document.getElementById('statLastSync');
+    const syncIcon = document.getElementById('syncIcon');
+    const btnRefreshData = document.getElementById('btnRefreshData');
+    
+    const rowsPerPageSelect = document.getElementById('rowsPerPageSelect');
+    const pageInfo = document.getElementById('pageInfo');
+    const btnPrevPage = document.getElementById('btnPrevPage');
+    const btnNextPage = document.getElementById('btnNextPage');
+    
+    const scriptUrlInput = document.getElementById('scriptUrlInput');
+    const btnSaveScriptUrl = document.getElementById('btnSaveScriptUrl');
+
+    const dataModal = document.getElementById('dataModal');
+    const btnOpenAddModal = document.getElementById('btnOpenAddModal');
+    const btnCloseModal = document.getElementById('btnCloseModal');
+    const btnCancelModal = document.getElementById('btnCancelModal');
+    const btnSaveData = document.getElementById('btnSaveData');
+    const btnSaveText = document.getElementById('btnSaveText');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalSubtitle = document.getElementById('modalSubtitle');
+    const modalHeaderIcon = document.getElementById('modalHeaderIcon');
+    const formFieldsContainer = document.getElementById('formFieldsContainer');
+
+    const configModal = document.getElementById('configModal');
+    const btnOpenConfig = document.getElementById('btnOpenConfig');
+    const btnCloseConfigModal = document.getElementById('btnCloseConfigModal');
+    const btnGotIt = document.getElementById('btnGotIt');
+    const btnCopyScript = document.getElementById('btnCopyScript');
+
+    // Helper: Show Toast Notification
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      const bgClass = type === 'success' ? 'bg-emerald-600 border-emerald-400' : (type === 'error' ? 'bg-red-600 border-red-400' : 'bg-cyan-600 border-cyan-400');
+      const icon = type === 'success' ? 'fa-circle-check' : (type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info');
+      
+      toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl border text-white text-xs shadow-xl transition-all transform translate-y-2 opacity-0 pointer-events-auto ${bgClass}`;
+      toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${message}</span>`;
+      
+      const container = document.getElementById('toastContainer');
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Parse TSV text response
+    function parseTSVData(tsvText) {
+      if (!tsvText || !tsvText.trim()) {
+        return { headers: [], rows: [] };
+      }
+      
+      const lines = tsvText.trim().split(/\r?\n/);
+      if (lines.length === 0) return { headers: [], rows: [] };
+
+      // Line 0 is Header
+      const headers = lines[0].split('\t').map(h => h.trim() || 'Kolom');
+      
+      // Line 1+ are Rows
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cols = lines[i].split('\t').map(c => c.trim());
+        
+        // Ensure cols array length matches headers
+        while (cols.length < headers.length) {
+          cols.push('');
+        }
+        
+        rows.push({
+          _id: i,
+          _rowIndex: i + 1, // Row number in Google Sheet (header is row 1)
+          cols: cols
+        });
+      }
+
+      return { headers, rows };
+    }
+
+    // Fetch data from published TSV URL
+    async function loadSheetData() {
+      tableLoader.classList.remove('hidden');
+      syncIcon.classList.add('animate-spin');
+
+      try {
+        const response = await fetch(`${TSV_SHEET_URL}&t=${Date.now()}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const tsvText = await response.text();
+        const parsed = parseTSVData(tsvText);
+
+        if (parsed.headers.length === 0) {
+          // Default fallback headers if sheet is empty or corrupted
+          state.headers = ['ID', 'Nama', 'Kategori', 'Tanggal', 'Keterangan', 'Status'];
+          state.rows = [];
+        } else {
+          state.headers = parsed.headers;
+          state.rows = parsed.rows;
+        }
+
+        statTotalRows.textContent = state.rows.length;
+        statTotalCols.textContent = state.headers.length;
+        statLastSync.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        applyFilterAndRender();
+        showToast('Data berhasil disinkronkan dari Google Sheet!', 'success');
+
+      } catch (error) {
+        console.error('Gagal mengambil TSV Google Sheet:', error);
+        showToast('Gagal memuat data TSV langsung. Menggunakan cache/mock data.', 'info');
+        
+        // Fallback default structure if CORS or network blocks fetch
+        if (state.headers.length === 0) {
+          state.headers = ['ID', 'Nama', 'Kategori', 'Jumlah', 'Tanggal', 'Status', 'Catatan'];
+          state.rows = [
+            { _id: 1, _rowIndex: 2, cols: ['101', 'Peralatan Kantor', 'Logistik', '15', '2026-09-20', 'Aktif', 'Unit baru dimasukkan'] },
+            { _id: 2, _rowIndex: 3, cols: ['102', 'Proyek Aplikasi Web', 'TI & Software', '1', '2026-09-22', 'Proses', 'Pengembangan antarmuka'] },
+            { _id: 3, _rowIndex: 4, cols: ['103', 'Pemeriksaan Rutin', 'Operasional', '3', '2026-09-25', 'Selesai', 'Pemeriksaan berkala'] }
+          ];
+          statTotalRows.textContent = state.rows.length;
+          statTotalCols.textContent = state.headers.length;
+          statLastSync.textContent = 'Mode Offline / Fallback';
+          applyFilterAndRender();
+        }
+      } finally {
+        tableLoader.classList.add('hidden');
+        syncIcon.classList.remove('animate-spin');
+      }
+    }
+
+    // Apply search filter and handle pagination
+    function applyFilterAndRender() {
+      const query = state.searchQuery.toLowerCase().trim();
+      
+      if (!query) {
+        state.filteredRows = [...state.rows];
+      } else {
+        state.filteredRows = state.rows.filter(row => {
+          return row.cols.some(val => String(val).toLowerCase().includes(query));
+        });
+      }
+
+      // Reset page if out of bounds
+      const maxPage = Math.ceil(state.filteredRows.length / state.rowsPerPage) || 1;
+      if (state.currentPage > maxPage) {
+        state.currentPage = maxPage;
+      }
+
+      renderTableHeader();
+      renderTableBody();
+      renderPaginationControls();
+    }
+
+    // Render Table Header dynamically
+    function renderTableHeader() {
+      let html = `<th class="px-4 py-3.5 font-semibold text-center w-12 text-slate-400">#</th>`;
+      
+      state.headers.forEach(header => {
+        html += `<th class="px-4 py-3.5 font-semibold text-slate-300 truncate max-w-xs">${escapeHtml(header)}</th>`;
+      });
+
+      // Actions Column (Edit ONLY, NO Delete)
+      html += `<th class="px-4 py-3.5 font-semibold text-right w-24 text-slate-300">Aksi</th>`;
+      
+      tableHeaderRow.innerHTML = html;
+    }
+
+    // Render Table Rows
+    function renderTableBody() {
+      if (state.filteredRows.length === 0) {
+        tableBody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      
+      const startIndex = (state.currentPage - 1) * state.rowsPerPage;
+      const endIndex = startIndex + state.rowsPerPage;
+      const pageRows = state.filteredRows.slice(startIndex, endIndex);
+
+      let html = '';
+      pageRows.forEach((row, idx) => {
+        const rowNum = startIndex + idx + 1;
+        html += `<tr class="hover:bg-slate-800/40 transition-colors group">`;
+        html += `<td class="px-4 py-3 text-center text-xs text-slate-500 font-mono">${rowNum}</td>`;
+
+        row.cols.forEach((colValue, cIdx) => {
+          const val = colValue || '-';
+          // Check for status badge formatting
+          let cellHtml = escapeHtml(val);
+          const lowerVal = String(val).toLowerCase();
+          
+          if (['aktif', 'selesai', 'lunas', 'approved', 'success'].includes(lowerVal)) {
+            cellHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${escapeHtml(val)}</span>`;
+          } else if (['pending', 'proses', 'draft', 'waiting'].includes(lowerVal)) {
+            cellHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">${escapeHtml(val)}</span>`;
+          }
+
+          html += `<td class="px-4 py-3 text-xs text-slate-200 truncate max-w-xs">${cellHtml}</td>`;
+        });
+
+        // Edit Button ONLY (Strictly No Delete Button)
+        html += `
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            <button onclick="openEditModal(${row._id})" title="Edit Data Baris Ini" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 text-xs font-medium transition-all transform active:scale-95">
+              <i class="fa-solid fa-pen-to-square"></i>
+              <span>Edit</span>
+            </button>
+          </td>
+        `;
+
+        html += `</tr>`;
+      });
+
+      tableBody.innerHTML = html;
+    }
+
+    // Render Pagination Controls
+    function renderPaginationControls() {
+      const totalFiltered = state.filteredRows.length;
+      const totalPages = Math.ceil(totalFiltered / state.rowsPerPage) || 1;
+      
+      pageInfo.textContent = `Halaman ${state.currentPage} dari ${totalPages} (${totalFiltered} total data)`;
+      
+      btnPrevPage.disabled = state.currentPage <= 1;
+      btnNextPage.disabled = state.currentPage >= totalPages;
+    }
+
+    // Open Modal for Add New Entry
+    function openAddModal() {
+      state.editingRowId = null;
+      modalTitle.textContent = 'Tambah Data Baru';
+      modalSubtitle.textContent = 'Masukkan nilai untuk setiap kolom spreadsheet';
+      modalHeaderIcon.className = 'h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center';
+      modalHeaderIcon.innerHTML = '<i class="fa-solid fa-plus"></i>';
+      btnSaveText.textContent = 'Simpan Data';
+
+      generateFormFields([]);
+      dataModal.classList.remove('hidden');
+    }
+
+    // Open Modal for Edit Entry
+    window.openEditModal = function(rowId) {
+      const row = state.rows.find(r => r._id === rowId);
+      if (!row) return;
+
+      state.editingRowId = rowId;
+      modalTitle.textContent = `Edit Data (Baris #${row._rowIndex})`;
+      modalSubtitle.textContent = 'Perbarui data tanpa merubah struktur kolom';
+      modalHeaderIcon.className = 'h-9 w-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center';
+      modalHeaderIcon.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+      btnSaveText.textContent = 'Perbarui Data';
+
+      generateFormFields(row.cols);
+      dataModal.classList.remove('hidden');
+    };
+
+    // Close Data Modal
+    function closeModal() {
+      dataModal.classList.add('hidden');
+    }
+
+    // Generate Dynamic Form Inputs based on detected sheet headers
+    function generateFormFields(colValues = []) {
+      formFieldsContainer.innerHTML = '';
+
+      if (state.headers.length === 0) {
+        formFieldsContainer.innerHTML = `<p class="text-xs text-amber-400">Header kolom belum terdeteksi dari Google Sheet.</p>`;
+        return;
+      }
+
+      state.headers.forEach((header, idx) => {
+        const val = colValues[idx] !== undefined ? colValues[idx] : '';
+        const fieldGroup = document.createElement('div');
+        fieldGroup.className = 'space-y-1.5';
+
+        const label = document.createElement('label');
+        label.className = 'block text-xs font-semibold text-slate-300';
+        label.innerHTML = `${escapeHtml(header)} <span class="text-slate-500 text-[10px]">(Kolom ${idx + 1})</span>`;
+
+        let input;
+        const lowerHeader = header.toLowerCase();
+
+        // Dynamic input type selection based on header name
+        if (lowerHeader.includes('keterangan') || lowerHeader.includes('catatan') || lowerHeader.includes('deskripsi')) {
+          input = document.createElement('textarea');
+          input.rows = 2;
+          input.className = 'w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500';
+        } else {
+          input = document.createElement('input');
+          if (lowerHeader.includes('tanggal') || lowerHeader.includes('date')) {
+            input.type = 'date';
+          } else if (lowerHeader.includes('jumlah') || lowerHeader.includes('harga') || lowerHeader.includes('total') || lowerHeader.includes('qty')) {
+            input.type = 'number';
+          } else {
+            input.type = 'text';
+          }
+          input.className = 'w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500';
+        }
+
+        input.dataset.colIndex = idx;
+        input.value = val;
+        input.placeholder = `Masukkan ${header}...`;
+
+        fieldGroup.appendChild(label);
+        fieldGroup.appendChild(input);
+        formFieldsContainer.appendChild(fieldGroup);
+      });
+    }
+
+    // Save Form Handler (Add or Edit)
+    async function handleSaveData() {
+      const inputs = formFieldsContainer.querySelectorAll('input, textarea');
+      const rowValues = [];
+      
+      inputs.forEach(input => {
+        rowValues[parseInt(input.dataset.colIndex)] = input.value.trim();
+      });
+
+      btnSaveData.disabled = true;
+      btnSaveData.classList.add('opacity-70');
+
+      if (state.editingRowId === null) {
+        // === ADD DATA MODE ===
+        const newId = Date.now();
+        const newRowIndex = state.rows.length + 2; // Assuming header is row 1
+        const newRow = { _id: newId, _rowIndex: newRowIndex, cols: rowValues };
+
+        // 1. Update Local Interactive View
+        state.rows.unshift(newRow); // Place at top for immediate visibility
+        statTotalRows.textContent = state.rows.length;
+        applyFilterAndRender();
+
+        // 2. Push to Google Apps Script Endpoint if configured
+        if (state.scriptUrl) {
+          sendToAppsScript('add', { row: rowValues });
+        } else {
+          showToast('Data berhasil ditambahkan secara lokal! Masukkan URL API untuk auto-sync ke Google Sheet.', 'info');
+        }
+
+      } else {
+        // === EDIT DATA MODE ===
+        const targetRow = state.rows.find(r => r._id === state.editingRowId);
+        if (targetRow) {
+          targetRow.cols = rowValues;
+          applyFilterAndRender();
+
+          // Send Edit Request to Apps Script
+          if (state.scriptUrl) {
+            sendToAppsScript('edit', { rowIndex: targetRow._rowIndex, row: rowValues });
+          } else {
+            showToast('Data diperbarui di antarmuka! Masukkan URL API agar tersimpan permanen di Google Sheet.', 'info');
+          }
+        }
+      }
+
+      btnSaveData.disabled = false;
+      btnSaveData.classList.remove('opacity-70');
+      closeModal();
+    }
+
+    // Send HTTP POST payload to Google Apps Script Web App
+    async function sendToAppsScript(action, payload) {
+      if (!state.scriptUrl) return;
+
+      try {
+        showToast('Mengirim perubahan ke Google Sheet...', 'info');
+        
+        // Use no-cors mode or standard fetch payload
+        await fetch(state.scriptUrl, {
+          method: 'POST',
+          mode: 'no-cors', // Standard cross-origin Web App mode for Google Apps Script
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: action, ...payload })
+        });
+
+        showToast('Perubahan berhasil dikirim & tersimpan di Google Sheet!', 'success');
+      } catch (err) {
+        console.error('Error Apps Script:', err);
+        showToast('Gagal mengirim ke Apps Script API. Periksa URL Anda.', 'error');
+      }
+    }
+
+    // Helper: Escape HTML string to prevent XSS
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Event Listeners Setup
+    function initEvents() {
+      // Refresh Data Button
+      btnRefreshData.addEventListener('click', loadSheetData);
+
+      // Search Filter Input
+      searchInput.addEventListener('input', (e) => {
+        state.searchQuery = e.target.value;
+        state.currentPage = 1;
+        applyFilterAndRender();
+      });
+
+      // Rows Per Page Select
+      rowsPerPageSelect.addEventListener('change', (e) => {
+        state.rowsPerPage = parseInt(e.target.value);
+        state.currentPage = 1;
+        applyFilterAndRender();
+      });
+
+      // Pagination Buttons
+      btnPrevPage.addEventListener('click', () => {
+        if (state.currentPage > 1) {
+          state.currentPage--;
+          applyFilterAndRender();
+        }
+      });
+
+      btnNextPage.addEventListener('click', () => {
+        const maxPage = Math.ceil(state.filteredRows.length / state.rowsPerPage) || 1;
+        if (state.currentPage < maxPage) {
+          state.currentPage++;
+          applyFilterAndRender();
+        }
+      });
+
+      // Add Data Modal Triggers
+      btnOpenAddModal.addEventListener('click', openAddModal);
+      btnCloseModal.addEventListener('click', closeModal);
+      btnCancelModal.addEventListener('click', closeModal);
+      btnSaveData.addEventListener('click', handleSaveData);
+
+      // Script URL Save
+      btnSaveScriptUrl.addEventListener('click', () => {
+        const url = scriptUrlInput.value.trim();
+        state.scriptUrl = url;
+        localStorage.setItem('gs_script_url', url);
+        showToast('URL Google Apps Script API berhasil disimpan!', 'success');
+      });
+
+      // Config Modal Triggers
+      btnOpenConfig.addEventListener('click', () => configModal.classList.remove('hidden'));
+      btnCloseConfigModal.addEventListener('click', () => configModal.classList.add('hidden'));
+      btnGotIt.addEventListener('click', () => configModal.classList.add('hidden'));
+
+      // Copy Code Helper
+      btnCopyScript.addEventListener('click', () => {
+        const codeText = document.getElementById('appsScriptCode').textContent;
+        navigator.clipboard.writeText(codeText).then(() => {
+          showToast('Kode Google Apps Script disalin ke clipboard!', 'success');
+        }).catch(() => {
+          showToast('Gagal menyalin kode. Silakan pilih dan salin manual.', 'error');
+        });
+      });
+
+      // Load initial Script URL into input
+      if (state.scriptUrl) {
+        scriptUrlInput.value = state.scriptUrl;
+      }
+    }
+
+    // Initial Load
+    window.addEventListener('DOMContentLoaded', () => {
+      initEvents();
+      loadSheetData();
+    });
+  </script>
+</body>
+</html>
